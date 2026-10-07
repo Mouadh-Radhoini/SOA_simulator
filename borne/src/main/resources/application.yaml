@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: borne
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/borne}
+    username: ${DB_USERNAME:borne}
+    password: ${DB_PASSWORD:borne}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8080}
+
+borne:
+  id: ${BORNE_ID:borne-1}
+  battery-capacity-kwh: ${BORNE_BATTERY_CAPACITY_KWH:50}
+  charging-rate-kw: ${BORNE_CHARGING_RATE_KW:7.2}
+  charging-update-ms: ${BORNE_CHARGING_UPDATE_MS:60000}
