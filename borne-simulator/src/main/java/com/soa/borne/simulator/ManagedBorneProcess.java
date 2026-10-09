@@ -1,6 +1,6 @@
 package com.soa.borne.simulator;
 
-public record ManagedBorneProcess(String id, int port, Process process) {
+public record ManagedBorneProcess(String id, String type, int port, Process process) {
 
     public boolean isAlive() {
         return process.isAlive();

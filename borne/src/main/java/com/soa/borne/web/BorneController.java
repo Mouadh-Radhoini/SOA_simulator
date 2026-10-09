@@ -35,7 +35,7 @@ public class BorneController {
     @ResponseStatus(HttpStatus.CREATED)
     public BorneResponse create(@RequestBody @jakarta.validation.Valid CreateBorneRequest request) {
         return BorneResponse.from(service.create(
-                request.id(), request.batteryCapacityKwh(), request.powerKw()));
+                request.id(), request.type(), request.rate()));
     }
 
     @GetMapping("/{id}")
@@ -52,7 +52,21 @@ public class BorneController {
     @GetMapping("/{id}/consumption")
     public ConsumptionResponse consumption(@PathVariable String id) {
         var borne = service.findById(id);
-        return new ConsumptionResponse(borne.getId(), borne.getEnergyKwh(), borne.getPowerKw());
+        return new ConsumptionResponse(borne.getId(), borne.getType(), borne.getConsumption(),
+                service.pricingService().unitFor(borne.getType()));
+    }
+
+    @PostMapping("/{id}/consume")
+    public ConsumptionResponse consume(@PathVariable String id,
+                                       @RequestBody @jakarta.validation.Valid ConsumeRequest request) {
+        var borne = service.consume(id, request.amount());
+        return new ConsumptionResponse(borne.getId(), borne.getType(), borne.getConsumption(),
+                service.pricingService().unitFor(borne.getType()));
+    }
+
+    @GetMapping("/{id}/price")
+    public PriceResponse price(@PathVariable String id) {
+        return PriceResponse.from(service.findById(id), service.pricingService());
     }
 
     @PutMapping("/{id}/status")
@@ -71,14 +85,14 @@ public class BorneController {
         return BorneResponse.from(service.release(id));
     }
 
-    @PostMapping("/{id}/start-charging")
-    public BorneResponse startCharging(@PathVariable String id) {
-        return BorneResponse.from(service.startCharging(id));
+    @PostMapping("/{id}/start")
+    public BorneResponse start(@PathVariable String id) {
+        return BorneResponse.from(service.start(id));
     }
 
-    @PostMapping("/{id}/stop-charging")
-    public BorneResponse stopCharging(@PathVariable String id) {
-        return BorneResponse.from(service.stopCharging(id));
+    @PostMapping("/{id}/stop")
+    public BorneResponse stop(@PathVariable String id) {
+        return BorneResponse.from(service.stop(id));
     }
 
     @PostMapping("/{id}/out-of-service")

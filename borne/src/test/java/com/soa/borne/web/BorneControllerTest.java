@@ -1,6 +1,7 @@
 package com.soa.borne.web;
 
 import com.soa.borne.domain.Borne;
+import com.soa.borne.domain.BorneType;
 import com.soa.borne.infrastructure.persistence.BorneRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ class BorneControllerTest {
     @BeforeEach
     void setUp() {
         repository.deleteAll();
-        repository.saveAndFlush(new Borne("api-borne", 50));
+        repository.saveAndFlush(new Borne("api-borne", BorneType.ELECTRICITY, 7.2));
     }
 
     @Test
@@ -42,7 +43,7 @@ class BorneControllerTest {
 
     @Test
     void returnsConflictForInvalidTransition() throws Exception {
-        mockMvc.perform(post("/api/bornes/api-borne/start-charging")
+        mockMvc.perform(post("/api/bornes/api-borne/start")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status", is(409)));

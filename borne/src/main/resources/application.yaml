@@ -2,7 +2,7 @@ spring:
   application:
     name: borne
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/borne}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/borne}
     username: ${DB_USERNAME:borne}
     password: ${DB_PASSWORD:borne}
   jpa:
@@ -22,6 +22,19 @@ server:
 
 borne:
   id: ${BORNE_ID:borne-1}
-  battery-capacity-kwh: ${BORNE_BATTERY_CAPACITY_KWH:50}
-  charging-rate-kw: ${BORNE_CHARGING_RATE_KW:7.2}
-  charging-update-ms: ${BORNE_CHARGING_UPDATE_MS:60000}
+  type: ${BORNE_TYPE:ELECTRICITY}
+  rate: ${BORNE_RATE:7.2}
+
+pricing:
+  electricity:
+    tier-one-limit: ${ELECTRICITY_TIER_ONE_LIMIT:10}
+    tier-two-limit: ${ELECTRICITY_TIER_TWO_LIMIT:20}
+    tier-one-rate: ${ELECTRICITY_TIER_ONE_RATE:0.30}
+    tier-two-rate: ${ELECTRICITY_TIER_TWO_RATE:0.45}
+    tier-three-rate: ${ELECTRICITY_TIER_THREE_RATE:0.60}
+  water:
+    tier-one-limit: ${WATER_TIER_ONE_LIMIT:100}
+    tier-two-limit: ${WATER_TIER_TWO_LIMIT:500}
+    tier-one-rate: ${WATER_TIER_ONE_RATE:0.002}
+    tier-two-rate: ${WATER_TIER_TWO_RATE:0.003}
+    tier-three-rate: ${WATER_TIER_THREE_RATE:0.005}

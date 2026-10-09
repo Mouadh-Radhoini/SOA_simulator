@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: borne
       POSTGRES_PASSWORD: borne
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - borne-postgres-data:/var/lib/postgresql/data
 

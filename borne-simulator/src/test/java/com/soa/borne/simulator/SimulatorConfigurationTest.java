@@ -34,9 +34,10 @@ class SimulatorConfigurationTest {
 
         assertEquals(2, manager.launchConfiguredBornes().size());
         assertTrue(commands.get(0).contains("--server.port=9000"));
-        assertTrue(commands.get(0).contains("--borne.id=test-1"));
+        assertTrue(commands.get(0).contains("--borne.id=test-001"));
         assertTrue(commands.get(1).contains("--server.port=9001"));
-        assertTrue(commands.get(1).contains("--borne.id=test-2"));
+        assertTrue(commands.get(1).contains("--borne.id=test-002"));
+        assertTrue(commands.get(0).contains("--borne.type=ELECTRICITY"));
         manager.shutdownAll();
     }
 }

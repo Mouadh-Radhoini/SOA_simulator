@@ -8,14 +8,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-import java.time.Duration;
 import java.time.Instant;
 
 @Entity
 @Table(name = "bornes")
 public class Borne {
-
-    private static final double EPSILON = 0.000001d;
 
     @Id
     @Column(name = "id", nullable = false, updatable = false, length = 100)
@@ -23,16 +20,20 @@ public class Borne {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
+    private BorneType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
     private BorneStatus status;
 
-    @Column(name = "energy_kwh", nullable = false)
-    private double energyKwh;
+    @Column(nullable = false)
+    private double consumption;
 
-    @Column(name = "power_kw", nullable = false)
-    private double powerKw;
+    @Column(name = "power_kw")
+    private Double powerKw;
 
-    @Column(name = "battery_capacity_kwh", nullable = false)
-    private double batteryCapacityKwh;
+    @Column(name = "flow_rate_lpm")
+    private Double flowRateLitersPerMinute;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -40,39 +41,37 @@ public class Borne {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @Column(name = "charging_started_at")
-    private Instant chargingStartedAt;
-
-    @Column(name = "last_energy_update_at", nullable = false)
-    private Instant lastEnergyUpdateAt;
-
     @Version
     private long version;
 
     protected Borne() {
     }
 
-    public Borne(String id, double batteryCapacityKwh) {
-        this(id, batteryCapacityKwh, 7.2, Instant.now());
+    public Borne(String id, BorneType type, double rate) {
+        this(id, type, rate, Instant.now());
     }
 
-    public Borne(String id, double batteryCapacityKwh, double powerKw, Instant now) {
+    public Borne(String id, BorneType type, double rate, Instant now) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Borne id must not be blank");
         }
-        if (batteryCapacityKwh <= 0) {
-            throw new IllegalArgumentException("Battery capacity must be positive");
+        if (type == null) {
+            throw new IllegalArgumentException("Borne type must not be null");
         }
-        if (powerKw <= 0) {
-            throw new IllegalArgumentException("Power must be positive");
+        if (Double.isNaN(rate) || Double.isInfinite(rate) || rate <= 0) {
+            throw new IllegalArgumentException("Borne rate must be positive");
         }
         this.id = id;
+        this.type = type;
         this.status = BorneStatus.AVAILABLE;
-        this.batteryCapacityKwh = batteryCapacityKwh;
-        this.powerKw = powerKw;
+        this.consumption = 0;
+        if (type == BorneType.ELECTRICITY) {
+            this.powerKw = rate;
+        } else {
+            this.flowRateLitersPerMinute = rate;
+        }
         this.createdAt = now;
         this.updatedAt = now;
-        this.lastEnergyUpdateAt = now;
     }
 
     public void reserve() {
@@ -87,58 +86,39 @@ public class Borne {
         touch();
     }
 
-    public void startCharging(Instant now) {
-        requireStatus(BorneStatus.RESERVED, "Only a reserved borne can start charging");
-        chargingStartedAt = now;
-        lastEnergyUpdateAt = now;
-        status = BorneStatus.CHARGING;
-        touch(now);
+    public void startUse() {
+        requireStatus(BorneStatus.RESERVED, "Only a reserved borne can start being used");
+        status = BorneStatus.IN_USE;
+        touch();
     }
 
-    public void stopCharging() {
-        requireStatus(BorneStatus.CHARGING, "Only a charging borne can stop charging");
+    public void stopUse() {
+        requireStatus(BorneStatus.IN_USE, "Only an in-use borne can stop being used");
         status = BorneStatus.AVAILABLE;
-        chargingStartedAt = null;
         touch();
     }
 
     public void markOutOfService() {
+        if (status == BorneStatus.OUT_OF_SERVICE) {
+            throw new InvalidBorneTransitionException("Borne is already out of service");
+        }
         status = BorneStatus.OUT_OF_SERVICE;
-        chargingStartedAt = null;
         touch();
     }
 
     public void reactivate() {
-        requireStatus(BorneStatus.OUT_OF_SERVICE, "Only an out-of-service borne can be reactivated");
+        requireStatus(BorneStatus.OUT_OF_SERVICE,
+                "Only an out-of-service borne can be reactivated");
         status = BorneStatus.AVAILABLE;
-        lastEnergyUpdateAt = Instant.now();
         touch();
     }
 
-    public void applyChargingEnergy(Instant now, double kilowatts) {
-        requireStatus(BorneStatus.CHARGING, "Energy can only be updated while charging");
-        if (now.isBefore(lastEnergyUpdateAt)) {
-            return;
+    public void consume(double amount) {
+        if (Double.isNaN(amount) || Double.isInfinite(amount) || amount < 0) {
+            throw new IllegalArgumentException("Consumption must not be negative");
         }
-        if (kilowatts < 0) {
-            throw new IllegalArgumentException("Charging rate must not be negative");
-        }
-        double elapsedHours = Duration.between(lastEnergyUpdateAt, now).toMillis() / 3_600_000d;
-        energyKwh = Math.min(batteryCapacityKwh, energyKwh + elapsedHours * kilowatts);
-        lastEnergyUpdateAt = now;
-        touch(now);
-        if (batteryCapacityKwh - energyKwh <= EPSILON) {
-            energyKwh = batteryCapacityKwh;
-            stopCharging();
-        }
-    }
-
-    private void touch() {
-        touch(Instant.now());
-    }
-
-    private void touch(Instant now) {
-        updatedAt = now;
+        consumption += amount;
+        touch();
     }
 
     private void requireStatus(BorneStatus expected, String message) {
@@ -147,39 +127,16 @@ public class Borne {
         }
     }
 
-    public String getId() {
-        return id;
+    private void touch() {
+        updatedAt = Instant.now();
     }
 
-    public BorneStatus getStatus() {
-        return status;
-    }
-
-    public double getEnergyKwh() {
-        return energyKwh;
-    }
-
-    public double getPowerKw() {
-        return powerKw;
-    }
-
-    public double getBatteryCapacityKwh() {
-        return batteryCapacityKwh;
-    }
-
-    public Instant getChargingStartedAt() {
-        return chargingStartedAt;
-    }
-
-    public Instant getLastEnergyUpdateAt() {
-        return lastEnergyUpdateAt;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+    public String getId() { return id; }
+    public BorneType getType() { return type; }
+    public BorneStatus getStatus() { return status; }
+    public double getConsumption() { return consumption; }
+    public Double getPowerKw() { return powerKw; }
+    public Double getFlowRateLitersPerMinute() { return flowRateLitersPerMinute; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }

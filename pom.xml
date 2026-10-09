@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>borne-platform</name>
-    <description>EV charging borne service and its local process simulator</description>
+    <description>Supply point service and its local process simulator</description>
 
     <modules>
         <module>borne</module>

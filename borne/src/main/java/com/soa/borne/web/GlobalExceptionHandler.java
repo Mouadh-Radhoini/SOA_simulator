@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.time.Instant;
 
@@ -27,10 +29,18 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, exception.getMessage());
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class})
+    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class,
+            ConstraintViolationException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse badRequest(Exception exception, HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse unreadableRequest(HttpMessageNotReadableException exception,
+                                           HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "Request body contains invalid values");
     }
 
     private ErrorResponse error(HttpStatus status, String message) {

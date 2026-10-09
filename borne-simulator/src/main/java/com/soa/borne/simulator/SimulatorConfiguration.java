@@ -12,8 +12,8 @@ public record SimulatorConfiguration(
         String javaCommand) {
 
     public SimulatorConfiguration {
-        if (count < 1) {
-            throw new IllegalArgumentException("count must be at least 1");
+        if (count < 0) {
+            throw new IllegalArgumentException("count must not be negative");
         }
         if (basePort < 1 || basePort > 65535 - count + 1) {
             throw new IllegalArgumentException("base port does not leave room for all processes");
@@ -34,7 +34,7 @@ public record SimulatorConfiguration(
         return new SimulatorConfiguration(
                 integer(values, "count", 3),
                 integer(values, "base-port", 8081),
-                values.getOrDefault("borne-id-prefix", "sim-borne-"),
+                values.getOrDefault("borne-id-prefix", "B"),
                 Path.of(values.getOrDefault("borne-jar", "borne/target/borne-0.0.1-SNAPSHOT.jar")),
                 values.getOrDefault("java", Path.of(System.getProperty("java.home"), "bin", "java").toString()));
     }

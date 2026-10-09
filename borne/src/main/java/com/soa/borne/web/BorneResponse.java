@@ -7,22 +7,24 @@ import java.time.Instant;
 
 public record BorneResponse(
         String id,
+        com.soa.borne.domain.BorneType type,
         BorneStatus status,
-        double energyKwh,
-        double powerKw,
-        double batteryCapacityKwh,
-        Instant chargingStartedAt,
+        double consumption,
+        String unit,
+        Double powerKw,
+        Double flowRateLitersPerMinute,
         Instant createdAt,
         Instant updatedAt) {
 
     public static BorneResponse from(Borne borne) {
         return new BorneResponse(
                 borne.getId(),
+                borne.getType(),
                 borne.getStatus(),
-                borne.getEnergyKwh(),
+                borne.getConsumption(),
+                borne.getType() == com.soa.borne.domain.BorneType.ELECTRICITY ? "kWh" : "L",
                 borne.getPowerKw(),
-                borne.getBatteryCapacityKwh(),
-                borne.getChargingStartedAt(),
+                borne.getFlowRateLitersPerMinute(),
                 borne.getCreatedAt(),
                 borne.getUpdatedAt());
     }

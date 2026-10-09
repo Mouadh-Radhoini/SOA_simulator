@@ -2,34 +2,21 @@ package com.soa.borne.application;
 
 import com.soa.borne.domain.Borne;
 import com.soa.borne.domain.BorneStatus;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
+import com.soa.borne.domain.BorneType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
-import java.time.Instant;
 
 @Service
 public class BorneService {
 
     private final BorneStore repository;
-    private final Clock clock;
-    private final double chargingRateKw;
+    private final PricingService pricingService;
 
-    @Autowired
-    public BorneService(BorneStore repository,
-                        @Value("${borne.charging-rate-kw:7.2}") double chargingRateKw) {
-        this(repository, Clock.systemUTC(), chargingRateKw);
-    }
-
-    BorneService(BorneStore repository, Clock clock, double chargingRateKw) {
+    public BorneService(BorneStore repository, PricingService pricingService) {
         this.repository = repository;
-        this.clock = clock;
-        this.chargingRateKw = chargingRateKw;
+        this.pricingService = pricingService;
     }
 
     @Transactional(readOnly = true)
@@ -43,29 +30,34 @@ public class BorneService {
     }
 
     @Transactional
-    public Borne create(String id, double batteryCapacityKwh, double powerKw) {
+    public Borne create(String id, BorneType type, double rate) {
         if (repository.existsById(id)) {
             throw new IllegalArgumentException("A borne with id '" + id + "' already exists");
         }
-        return repository.save(new Borne(id, batteryCapacityKwh, powerKw, clock.instant()));
+        return repository.save(new Borne(id, type, rate));
     }
 
     @Transactional
     public Borne updateStatus(String id, BorneStatus target) {
+        Borne borne = findById(id);
         return switch (target) {
-            case AVAILABLE -> releaseOrReactivate(id);
+            case AVAILABLE -> {
+                if (borne.getStatus() == BorneStatus.RESERVED) {
+                    yield release(id);
+                }
+                if (borne.getStatus() == BorneStatus.IN_USE) {
+                    yield stop(id);
+                }
+                if (borne.getStatus() == BorneStatus.OUT_OF_SERVICE) {
+                    yield reactivate(id);
+                }
+                throw new com.soa.borne.domain.InvalidBorneTransitionException(
+                        "Borne is already available");
+            }
             case RESERVED -> reserve(id);
-            case CHARGING -> startCharging(id);
+            case IN_USE -> start(id);
             case OUT_OF_SERVICE -> markOutOfService(id);
         };
-    }
-
-    private Borne releaseOrReactivate(String id) {
-        Borne borne = findById(id);
-        if (borne.getStatus() == BorneStatus.OUT_OF_SERVICE) {
-            return reactivate(id);
-        }
-        return release(id);
     }
 
     @Transactional
@@ -83,19 +75,16 @@ public class BorneService {
     }
 
     @Transactional
-    public Borne startCharging(String id) {
+    public Borne start(String id) {
         Borne borne = findById(id);
-        borne.startCharging(clock.instant());
+        borne.startUse();
         return repository.save(borne);
     }
 
     @Transactional
-    public Borne stopCharging(String id) {
+    public Borne stop(String id) {
         Borne borne = findById(id);
-        borne.applyChargingEnergy(clock.instant(), chargingRateKw);
-        if (borne.getStatus() == BorneStatus.CHARGING) {
-            borne.stopCharging();
-        }
+        borne.stopUse();
         return repository.save(borne);
     }
 
@@ -114,12 +103,18 @@ public class BorneService {
     }
 
     @Transactional
-    @Scheduled(fixedDelayString = "${borne.charging-update-ms:60000}")
-    public void updateChargingEnergy() {
-        Instant now = clock.instant();
-        repository.findByStatus(BorneStatus.CHARGING).forEach(borne -> {
-            borne.applyChargingEnergy(now, chargingRateKw);
-            repository.save(borne);
-        });
+    public Borne consume(String id, double amount) {
+        Borne borne = findById(id);
+        borne.consume(amount);
+        return repository.save(borne);
+    }
+
+    @Transactional(readOnly = true)
+    public double price(String id) {
+        return pricingService.calculate(findById(id));
+    }
+
+    public PricingService pricingService() {
+        return pricingService;
     }
 }

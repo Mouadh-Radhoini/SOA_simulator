@@ -3,6 +3,6 @@ package com.soa.borne.domain;
 public enum BorneStatus {
     AVAILABLE,
     RESERVED,
-    CHARGING,
+    IN_USE,
     OUT_OF_SERVICE
 }

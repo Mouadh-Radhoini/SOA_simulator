@@ -10,4 +10,5 @@ spring:
     locations: classpath:db/migration
 borne:
   id: test-borne
-  charging-update-ms: 3600000
+  type: ELECTRICITY
+  rate: 7.2

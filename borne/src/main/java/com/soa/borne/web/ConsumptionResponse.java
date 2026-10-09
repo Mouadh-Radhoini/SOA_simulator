@@ -1,4 +1,8 @@
 package com.soa.borne.web;
 
-public record ConsumptionResponse(String id, double energyKwh, double powerKw) {
+public record ConsumptionResponse(
+        String borneId,
+        com.soa.borne.domain.BorneType type,
+        double consumption,
+        String unit) {
 }

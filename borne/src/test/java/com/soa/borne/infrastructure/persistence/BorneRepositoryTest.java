@@ -2,6 +2,7 @@ package com.soa.borne.infrastructure.persistence;
 
 import com.soa.borne.domain.Borne;
 import com.soa.borne.domain.BorneStatus;
+import com.soa.borne.domain.BorneType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -15,11 +16,11 @@ class BorneRepositoryTest {
     private BorneRepository repository;
 
     @Test
-    void persistsAndFindsBornesByStatus() {
-        repository.saveAndFlush(new Borne("persisted-borne", 40));
+    void persistsSupplyPointByStatus() {
+        repository.saveAndFlush(new Borne("B001", BorneType.WATER, 12));
 
         assertThat(repository.findByStatus(BorneStatus.AVAILABLE))
                 .extracting(Borne::getId)
-                .contains("persisted-borne");
+                .contains("B001");
     }
 }

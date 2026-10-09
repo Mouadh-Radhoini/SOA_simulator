@@ -11,7 +11,7 @@
 
     <artifactId>borne-simulator</artifactId>
     <name>borne-simulator</name>
-    <description>Console process simulator for multiple charging bornes</description>
+    <description>Console process simulator for multiple supply points</description>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
