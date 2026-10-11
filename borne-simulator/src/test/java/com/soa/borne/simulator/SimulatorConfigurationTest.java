@@ -2,42 +2,29 @@ package com.soa.borne.simulator;
 
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URI;
+import java.time.Duration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SimulatorConfigurationTest {
-
     @Test
-    void parsesCommandLineConfiguration() {
-        SimulatorConfiguration configuration = SimulatorConfiguration.from(new String[]{
-                "--count=2", "--base-port=9000", "--borne-id-prefix=test-", "--borne-jar=app.jar"});
-
-        assertEquals(2, configuration.count());
-        assertEquals(9000, configuration.basePort());
-        assertEquals("test-", configuration.borneIdPrefix());
-        assertEquals(Path.of("app.jar"), configuration.borneJar());
+    void parsesSharedApiConfiguration() {
+        SimulatorConfig config = SimulatorConfig.from(new String[]{
+                "--count=3", "--api-url=http://localhost:9090/",
+                "--max-workers=2", "--interval-ms=250", "--request-timeout-ms=700"});
+        assertEquals(3, config.count());
+        assertEquals(URI.create("http://localhost:9090/"), config.apiBaseUrl());
+        assertEquals(2, config.maxWorkers());
+        assertEquals(Duration.ofMillis(250), config.interval());
+        assertEquals("test-001", new SimulatorConfig(1, "test-", URI.create("http://localhost:8080"),
+                1, Duration.ofSeconds(1), Duration.ofSeconds(1), 0, 7.2, 12).withCount(2).borneId(0));
     }
 
     @Test
-    void buildsDistinctCommandsForEachBorne() throws Exception {
-        SimulatorConfiguration configuration = new SimulatorConfiguration(
-                2, 9000, "test-", Path.of("borne.jar"), "java");
-        List<List<String>> commands = new ArrayList<>();
-        BorneProcessManager manager = new BorneProcessManager(configuration, command -> {
-            commands.add(command);
-            return new ProcessBuilder("sh", "-c", "exit 0").start();
-        });
-
-        assertEquals(2, manager.launchConfiguredBornes().size());
-        assertTrue(commands.get(0).contains("--server.port=9000"));
-        assertTrue(commands.get(0).contains("--borne.id=test-001"));
-        assertTrue(commands.get(1).contains("--server.port=9001"));
-        assertTrue(commands.get(1).contains("--borne.id=test-002"));
-        assertTrue(commands.get(0).stream().noneMatch(value -> value.startsWith("--borne.type=")));
-        manager.shutdownAll();
+    void rejectsInvalidCountsAndMalformedNumbers() {
+        assertThrows(IllegalArgumentException.class, () -> SimulatorConfig.from(new String[]{"--count=-1"}));
+        assertThrows(IllegalArgumentException.class, () -> SimulatorConfig.from(new String[]{"--count=abc"}));
+        assertThrows(IllegalArgumentException.class, () -> SimulatorConfig.from(new String[]{"--count=101"}));
     }
 }
