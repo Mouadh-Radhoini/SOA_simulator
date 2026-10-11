@@ -22,8 +22,8 @@ server:
 
 borne:
   id: ${BORNE_ID:borne-1}
-  type: ${BORNE_TYPE:ELECTRICITY}
-  rate: ${BORNE_RATE:7.2}
+  power-kw: ${BORNE_POWER_KW:7.2}
+  water-flow-lpm: ${BORNE_WATER_FLOW_LPM:12}
 
 pricing:
   electricity:

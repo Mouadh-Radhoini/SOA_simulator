@@ -7,8 +7,8 @@ spring:
     hibernate:
       ddl-auto: create-drop
   flyway:
-    locations: classpath:db/migration
+    enabled: false
 borne:
   id: test-borne
-  type: ELECTRICITY
-  rate: 7.2
+  power-kw: 7.2
+  water-flow-lpm: 12
