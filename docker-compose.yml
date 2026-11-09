@@ -1,14 +1,95 @@
 services:
   postgres:
     image: postgres:16
+    container_name: soa-postgres
     environment:
-      POSTGRES_DB: borne
-      POSTGRES_USER: borne
-      POSTGRES_PASSWORD: borne
+      POSTGRES_DB: ${POSTGRES_DB:-borne}
+      POSTGRES_USER: ${POSTGRES_USER:-borne}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
     ports:
       - "5433:5432"
     volumes:
       - borne-postgres-data:/var/lib/postgresql/data
+    networks:
+      - soa-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migration:
+    image: ${BORNE_IMAGE:-soa-borne:local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - soa-network
+    entrypoint: ["java", "-jar", "/app/app.jar", "--server.port=8090", "--spring.main.web-application-type=none"]
+    environment:
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-borne}
+      DB_USERNAME: ${POSTGRES_USER:-borne}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      BORNE_ID: migration
+      FLYWAY_ENABLED: "true"
+      BORNE_INITIALIZER_ENABLED: "false"
+    restart: "no"
+
+  management:
+    build: ./management
+    container_name: soa-management
+    environment:
+      DB_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-borne}
+      DB_USERNAME: ${POSTGRES_USER:-borne}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      DOCKER_NETWORK: ${DOCKER_NETWORK:-soa-network}
+      BORNE_IMAGE: ${BORNE_IMAGE:-soa-borne:local}
+      DOCKER_HOST: unix:///var/run/docker.sock
+      MANAGEMENT_ADMIN_USERNAME: ${MANAGEMENT_ADMIN_USERNAME:-admin}
+      MANAGEMENT_ADMIN_PASSWORD: ${MANAGEMENT_ADMIN_PASSWORD:-change-me}
+    ports:
+      - "8081:8081"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    networks:
+      - soa-network
+
+  gateway:
+    build: ./gateway
+    container_name: soa-gateway
+    environment:
+      MANAGEMENT_HOST: management
+      MANAGEMENT_PORT: 8081
+      MANAGEMENT_USERNAME: ${MANAGEMENT_ADMIN_USERNAME:-admin}
+      MANAGEMENT_PASSWORD: ${MANAGEMENT_ADMIN_PASSWORD:-change-me}
+      GATEWAY_USERNAME: ${GATEWAY_USERNAME:-admin}
+      GATEWAY_PASSWORD: ${GATEWAY_PASSWORD:-change-me}
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      management:
+        condition: service_started
+    networks:
+      - soa-network
+
+  dashboard:
+    build: ./dashboard
+    container_name: soa-dashboard
+    ports:
+      - "${DASHBOARD_PORT:-4200}:80"
+    depends_on:
+      - gateway
+    networks:
+      - soa-network
 
 volumes:
   borne-postgres-data:
+
+networks:
+  soa-network:
+    name: ${DOCKER_NETWORK:-soa-network}

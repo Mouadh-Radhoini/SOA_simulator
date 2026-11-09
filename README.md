@@ -182,3 +182,84 @@ Tests cover domain lifecycle/pricing, persistence-facing reservation behavior,
 simulator input validation, unique IDs, bounded concurrent task execution,
 HTTP API interaction, task state tracking, retry boundaries, and graceful
 shutdown.
+
+## Distributed Docker architecture
+
+The project now also provides a Docker-based control plane. The original
+`borne` business API remains unchanged and is packaged once as a reusable
+image. The `management` service owns Docker lifecycle operations and the
+persistent `borne_instance` registry. The `gateway` service is Spring Cloud
+Gateway and is the only public application port.
+
+```mermaid
+flowchart LR
+  Client --> Gateway["Spring Cloud Gateway :8080"]
+  Gateway --> Management["Management :8081"]
+  Management --> B1["borne-B001:8080"]
+  Management --> B2["borne-B002:8080"]
+  Management --> Docker["Docker Engine socket"]
+  B1 --> DB[(PostgreSQL volume)]
+  B2 --> DB
+  Management --> DB
+```
+
+All services join the deterministic `soa-network`. Bornes use internal port
+8080 and are addressed by Docker DNS (`borne-b001`, `borne-b002`, ...); their
+ports are not published to the host. PostgreSQL is shared and persisted in
+the `borne-postgres-data` named volume. Flyway runs once in the Compose
+`migration` job before management starts; dynamically created Bornes disable
+Flyway and use the already migrated schema.
+
+### Run the distributed system
+
+Requirements are Docker Engine, Docker Compose, and JDK 21:
+
+```bash
+cp .env.example .env
+./mvnw clean package
+docker build -t soa-borne:local borne
+docker compose up -d postgres migration management gateway
+```
+
+The management container requires `/var/run/docker.sock` to create containers.
+This is intentionally limited to the local development control plane: never
+publish the Docker socket over TCP or expose management endpoints without
+authentication in a shared environment.
+
+Create and inspect Bornes through the gateway:
+
+```bash
+curl -X POST http://localhost:8080/api/management/bornes \
+  -H 'Content-Type: application/json' -d '{"count":3}'
+curl http://localhost:8080/api/management/bornes
+curl http://localhost:8080/api/bornes/B001/health
+docker ps --filter label=soa.borne=true
+docker inspect --format '{{.Name}} {{.State.Status}} {{.State.Health.Status}}' borne-b001
+```
+
+Lifecycle commands are `POST /api/management/bornes/{id}/start`,
+`/stop`, and `/restart`; deletion is
+`DELETE /api/management/bornes/{id}`. The gateway forwards the existing
+business routes, including reservations, under
+`/api/bornes/{borneId}/...`.
+
+`BorneHealthMonitor` checks container state and readiness every 10 seconds.
+It stores technical status (`STARTING`, `HEALTHY`, `UNHEALTHY`,
+`UNREACHABLE`, `STOPPED`) and history separately from the domain’s operational
+status (`AVAILABLE`, `RESERVED`, `IN_USE`, `OUT_OF_SERVICE`). Transient
+failures require three consecutive checks before changing a healthy instance
+to unhealthy. Actuator exposes only `health` and `info`, with readiness and
+liveness probes.
+
+### Stop and test
+
+```bash
+./mvnw test
+docker compose down
+docker compose down -v   # also removes the PostgreSQL data volume
+```
+
+Unit and application tests run in Maven. Docker image, three-container,
+shared-database persistence, gateway, and recovery tests require a running
+Docker daemon and are an environment-level verification step; the repository
+does not claim those tests passed unless the commands are executed.

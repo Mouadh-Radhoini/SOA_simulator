@@ -1,0 +1,10 @@
+name: SOA Local
+values:
+  - key: baseUrl
+    value: ''
+  - key: shipId
+    value: ''
+  - key: borneId
+    value: ''
+  - key: reservationId
+    value: ''

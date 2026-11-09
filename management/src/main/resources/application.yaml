@@ -1,0 +1,25 @@
+spring:
+  application.name: management
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/borne}
+    username: ${DB_USERNAME:borne}
+    password: ${DB_PASSWORD:borne}
+  jpa:
+    hibernate.ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: false
+server.port: ${SERVER_PORT:8081}
+management.endpoints.web.exposure.include: health,info
+management.endpoint.health.show-details: never
+springdoc:
+  swagger-ui.path: /swagger-ui.html
+  api-docs.path: /v3/api-docs
+security:
+  admin-username: ${MANAGEMENT_ADMIN_USERNAME:admin}
+  admin-password: ${MANAGEMENT_ADMIN_PASSWORD:change-me}
+borne:
+  image: ${BORNE_IMAGE:soa-borne:local}
+  network: ${DOCKER_NETWORK:soa-network}
+  monitor-interval-ms: ${HEALTH_MONITOR_INTERVAL_MS:10000}
+  failure-threshold: ${HEALTH_FAILURE_THRESHOLD:3}

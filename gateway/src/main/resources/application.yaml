@@ -1,0 +1,18 @@
+spring:
+  application.name: api-gateway
+  cloud:
+    gateway.server.webflux:
+      routes:
+        - id: borne-routing
+          uri: http://${MANAGEMENT_HOST:management}:${MANAGEMENT_PORT:8081}
+          predicates:
+            - Path=/api/bornes/**
+        - id: management-routing
+          uri: http://${MANAGEMENT_HOST:management}:${MANAGEMENT_PORT:8081}
+          predicates:
+            - Path=/api/management/**
+server.port: ${SERVER_PORT:8080}
+gateway:
+  username: ${GATEWAY_USERNAME:admin}
+  password: ${GATEWAY_PASSWORD:change-me}
+management.endpoints.web.exposure.include: health,info

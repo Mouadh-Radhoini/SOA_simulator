@@ -4,9 +4,11 @@ import com.soa.borne.borne.domain.Borne;
 import com.soa.borne.borne.domain.BorneRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "borne.initializer.enabled", havingValue = "true", matchIfMissing = true)
 public class BorneInitializer implements CommandLineRunner {
     private final BorneRepository repository;
     private final String id;

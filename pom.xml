@@ -13,6 +13,8 @@
 
     <modules>
         <module>borne</module>
+        <module>management</module>
+        <module>gateway</module>
         <module>borne-simulator</module>
     </modules>
 </project>
