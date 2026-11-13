@@ -18,7 +18,7 @@ public class SecurityConfiguration {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/actuator/health/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/ws/**").permitAll()
                         .requestMatchers("/api/management/**").hasAnyRole("ADMIN", "OPERATOR")
                         .requestMatchers("/api/bornes/**").hasAnyRole("ADMIN", "OPERATOR", "VIEWER")
                         .anyRequest().authenticated())

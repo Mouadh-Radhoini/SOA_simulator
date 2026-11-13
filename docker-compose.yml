@@ -1,4 +1,25 @@
 services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: soa-mosquitto
+    user: "0:0"
+    environment:
+      MQTT_USER: ${MQTT_USER:-management}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-change-me}
+      MQTT_BORNE_PASSWORD: ${MQTT_BORNE_PASSWORD:-change-me}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["rm -f /mosquitto/data/passwd; mosquitto_passwd -b -c /mosquitto/data/passwd \"$${MQTT_USER}\" \"$${MQTT_PASSWORD}\"; for i in $$(seq -w 1 100); do mosquitto_passwd -b /mosquitto/data/passwd \"B$$i\" \"$${MQTT_BORNE_PASSWORD}\"; done; chmod 644 /mosquitto/data/passwd; exec mosquitto -c /mosquitto/config/mosquitto.conf"]
+    volumes:
+      - ./mosquitto:/mosquitto/config
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -u \"$${MQTT_USER}\" -P \"$${MQTT_PASSWORD}\" -t soa/v1/healthcheck -n >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - soa-network
   postgres:
     image: postgres:16
     container_name: soa-postgres
@@ -33,6 +54,7 @@ services:
       BORNE_ID: migration
       FLYWAY_ENABLED: "true"
       BORNE_INITIALIZER_ENABLED: "false"
+      MQTT_ENABLED: "false"
     restart: "no"
 
   management:
@@ -47,12 +69,19 @@ services:
       DOCKER_HOST: unix:///var/run/docker.sock
       MANAGEMENT_ADMIN_USERNAME: ${MANAGEMENT_ADMIN_USERNAME:-admin}
       MANAGEMENT_ADMIN_PASSWORD: ${MANAGEMENT_ADMIN_PASSWORD:-change-me}
+      MQTT_BROKER_URL: tcp://mosquitto:1883
+      MQTT_USERNAME: ${MQTT_USER:-management}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-change-me}
+      MQTT_BORNE_PASSWORD: ${MQTT_BORNE_PASSWORD:-change-me}
+      WEBSOCKET_ALLOWED_ORIGINS: ${WEBSOCKET_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:14200}
     ports:
       - "8081:8081"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
+        condition: service_healthy
+      mosquitto:
         condition: service_healthy
       migration:
         condition: service_completed_successfully
@@ -82,6 +111,11 @@ services:
     container_name: soa-dashboard
     ports:
       - "${DASHBOARD_PORT:-4200}:80"
+    environment:
+      DASHBOARD_WS_USERNAME: ${DASHBOARD_WS_USERNAME:-viewer}
+      DASHBOARD_WS_PASSWORD: ${DASHBOARD_WS_PASSWORD:-viewer}
+      DASHBOARD_API_USERNAME: ${DASHBOARD_API_USERNAME:-admin}
+      DASHBOARD_API_PASSWORD: ${DASHBOARD_API_PASSWORD:-change-me}
     depends_on:
       - gateway
     networks:
@@ -89,6 +123,8 @@ services:
 
 volumes:
   borne-postgres-data:
+  mosquitto-data:
+  mosquitto-log:
 
 networks:
   soa-network:

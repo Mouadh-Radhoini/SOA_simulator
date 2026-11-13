@@ -12,12 +12,22 @@ spring:
 server.port: ${SERVER_PORT:8081}
 management.endpoints.web.exposure.include: health,info
 management.endpoint.health.show-details: never
+websocket.allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:4200}
 springdoc:
   swagger-ui.path: /swagger-ui.html
   api-docs.path: /v3/api-docs
 security:
   admin-username: ${MANAGEMENT_ADMIN_USERNAME:admin}
   admin-password: ${MANAGEMENT_ADMIN_PASSWORD:change-me}
+mqtt:
+  enabled: ${MQTT_ENABLED:true}
+  broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
+  username: ${MQTT_USERNAME:management}
+  password: ${MQTT_PASSWORD:change-me}
+  client-id: ${MQTT_CLIENT_ID:management-backend}
+  port-id: ${MQTT_PORT_ID:PORT001}
+  qos: ${MQTT_QOS:1}
+  borne-password: ${MQTT_BORNE_PASSWORD:change-me}
 borne:
   image: ${BORNE_IMAGE:soa-borne:local}
   network: ${DOCKER_NETWORK:soa-network}

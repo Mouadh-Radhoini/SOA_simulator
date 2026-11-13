@@ -37,6 +37,15 @@ borne:
   water-flow-lpm: ${BORNE_WATER_FLOW_LPM:12}
   initializer:
     enabled: ${BORNE_INITIALIZER_ENABLED:true}
+  mqtt:
+    enabled: ${MQTT_ENABLED:true}
+    broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
+    username: ${MQTT_USERNAME:${BORNE_ID:borne-1}}
+    password: ${MQTT_PASSWORD:change-me}
+    client-id: ${MQTT_CLIENT_ID:borne-${BORNE_ID:borne-1}}
+    port-id: ${MQTT_PORT_ID:PORT001}
+    qos: ${MQTT_QOS:1}
+    reconnect-delay-ms: ${MQTT_RECONNECT_DELAY_MS:5000}
 
 pricing:
   electricity:

@@ -1,7 +1,29 @@
 {
   "name": "soa-dashboard",
   "private": true,
-  "scripts": {"start": "ng serve", "build": "ng build", "test": "ng test --watch=false"},
-  "dependencies": {"@angular/animations": "20.3.35", "@angular/common": "20.3.35", "@angular/compiler": "20.3.35", "@angular/core": "20.3.35", "@angular/platform-browser": "20.3.35", "@angular/platform-browser-dynamic": "20.3.35", "rxjs": "7.8.2", "zone.js": "0.15.1"},
-  "devDependencies": {"@angular/build": "20.3.42", "@angular/cli": "20.3.42", "@angular/compiler-cli": "20.3.35", "typescript": "5.9.3"}
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build",
+    "test": "ng test --watch=false"
+  },
+  "dependencies": {
+    "@angular/animations": "20.3.35",
+    "@angular/common": "20.3.35",
+    "@angular/compiler": "20.3.35",
+    "@angular/core": "20.3.35",
+    "@angular/platform-browser": "20.3.35",
+    "@angular/platform-browser-dynamic": "20.3.35",
+    "@stomp/stompjs": "7.2.1",
+    "rxjs": "7.8.2",
+    "zone.js": "0.15.1"
+  },
+  "devDependencies": {
+    "@angular/build": "20.3.42",
+    "@angular/cli": "20.3.42",
+    "@angular/compiler-cli": "20.3.35",
+    "@types/node": "^26.6.6",
+    "jsdom": "^31.0.0",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
+  }
 }

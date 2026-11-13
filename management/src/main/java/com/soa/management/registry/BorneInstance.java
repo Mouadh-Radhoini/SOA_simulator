@@ -19,6 +19,8 @@ public class BorneInstance {
     @Column(name = "created_at", nullable = false) private Instant createdAt;
     @Column(name = "updated_at", nullable = false) private Instant updatedAt;
     @Column(name = "last_error", length = 1000) private String lastError;
+    @Column(name = "mqtt_availability", nullable = false) private String mqttAvailability = "UNKNOWN";
+    @Column(name = "last_mqtt_event_at") private Instant lastMqttEventAt;
     protected BorneInstance() {}
     public BorneInstance(String borneId, String containerName, String imageName) {
         this.borneId = borneId; this.containerName = containerName; this.imageName = imageName;
@@ -30,6 +32,7 @@ public class BorneInstance {
         this.containerId = containerId; this.containerStatus = containerStatus; this.applicationHealthStatus = health;
         this.consecutiveFailures = failures; this.lastError = error; this.lastHealthCheck = Instant.now(); this.updatedAt = Instant.now();
     }
+    public void updateMqtt(String availability) { this.mqttAvailability = availability; this.lastMqttEventAt = Instant.now(); this.updatedAt = Instant.now(); }
     public Long getId() { return id; } public String getBorneId() { return borneId; }
     public String getContainerId() { return containerId; } public String getContainerName() { return containerName; }
     public String getImageName() { return imageName; } public int getInternalPort() { return internalPort; }
@@ -38,4 +41,6 @@ public class BorneInstance {
     public Instant getLastHealthCheck() { return lastHealthCheck; } public int getConsecutiveFailures() { return consecutiveFailures; }
     public Instant getCreatedAt() { return createdAt; } public Instant getUpdatedAt() { return updatedAt; }
     public String getLastError() { return lastError; }
+    public String getMqttAvailability() { return mqttAvailability; }
+    public Instant getLastMqttEventAt() { return lastMqttEventAt; }
 }

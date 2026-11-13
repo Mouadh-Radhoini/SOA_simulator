@@ -25,13 +25,18 @@ public class DockerContainerManager implements AutoCloseable {
     private final String databaseUrl;
     private final String databaseUsername;
     private final String databasePassword;
+    private final String mqttBrokerUrl;
+    private final String mqttBornePassword;
 
     public DockerContainerManager(@Value("${borne.network}") String network, @Value("${borne.image}") String image,
                                   @Value("${spring.datasource.url}") String databaseUrl,
                                   @Value("${spring.datasource.username}") String databaseUsername,
-                                  @Value("${spring.datasource.password}") String databasePassword) {
+                                  @Value("${spring.datasource.password}") String databasePassword,
+                                  @Value("${mqtt.broker-url:tcp://mosquitto:1883}") String mqttBrokerUrl,
+                                  @Value("${mqtt.borne-password:change-me}") String mqttBornePassword) {
         this.network = network; this.image = image; this.databaseUrl = databaseUrl;
         this.databaseUsername = databaseUsername; this.databasePassword = databasePassword;
+        this.mqttBrokerUrl = mqttBrokerUrl; this.mqttBornePassword = mqttBornePassword;
         var config = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(System.getenv().getOrDefault("DOCKER_HOST", "unix:///var/run/docker.sock"))
                 .build();
@@ -52,7 +57,9 @@ public class DockerContainerManager implements AutoCloseable {
                 .withEnv("BORNE_ID=" + borneId, "SERVER_PORT=8080",
                         "FLYWAY_ENABLED=false", "BORNE_INITIALIZER_ENABLED=true",
                         "DB_URL=" + databaseUrl, "DB_USERNAME=" + databaseUsername,
-                        "DB_PASSWORD=" + databasePassword)
+                        "DB_PASSWORD=" + databasePassword, "MQTT_BROKER_URL=" + mqttBrokerUrl,
+                        "MQTT_USERNAME=" + borneId, "MQTT_PASSWORD=" + mqttBornePassword,
+                        "MQTT_CLIENT_ID=borne-" + borneId)
                 .withExposedPorts(port).withHostConfig(host).withLabels(Map.of("soa.borne", "true")).exec();
         return inspectBorneContainer(created.getId());
     }
@@ -60,7 +67,7 @@ public class DockerContainerManager implements AutoCloseable {
     public void startBorneContainer(String id) { client.startContainerCmd(resolve(id)).exec(); }
     public void stopBorneContainer(String id) { client.stopContainerCmd(resolve(id)).withTimeout(10).exec(); }
     public void restartBorneContainer(String id) { client.restartContainerCmd(resolve(id)).withTimeout(10).exec(); }
-    public void removeBorneContainer(String id) { client.removeContainerCmd(resolve(id)).withForce(false).exec(); }
+    public void removeBorneContainer(String id) { client.removeContainerCmd(resolve(id)).withForce(true).exec(); }
     public BorneContainer getBorneContainerStatus(String id) { return inspectBorneContainer(resolve(id)); }
     public List<BorneContainer> listBorneContainers() {
         return client.listContainersCmd().withShowAll(true).withLabelFilter(Map.of("soa.borne", "true")).exec()

@@ -1,0 +1,6 @@
+user management
+topic read soa/v1/ports/+/bornes/+/#
+topic write soa/v1/healthcheck
+
+pattern write soa/v1/ports/+/bornes/%u/#
+pattern read soa/v1/ports/+/bornes/%u/#

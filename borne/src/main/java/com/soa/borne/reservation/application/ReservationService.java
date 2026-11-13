@@ -11,6 +11,7 @@ import com.soa.borne.shared.error.ShipNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.soa.borne.mqtt.MqttEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.EnumSet;
@@ -23,10 +24,11 @@ public class ReservationService {
     private final JpaShipRepository ships;
     private final JpaBorneRepository bornes;
     private final PricingService pricing;
+    private final MqttEventPublisher mqtt;
 
     public ReservationService(JpaReservationRepository reservations, JpaShipRepository ships,
-                              JpaBorneRepository bornes, PricingService pricing) {
-        this.reservations = reservations; this.ships = ships; this.bornes = bornes; this.pricing = pricing;
+                              JpaBorneRepository bornes, PricingService pricing, MqttEventPublisher mqtt) {
+        this.reservations = reservations; this.ships = ships; this.bornes = bornes; this.pricing = pricing; this.mqtt = mqtt;
     }
     @Transactional
     public Reservation create(String shipId, String borneId) {
@@ -37,6 +39,9 @@ public class ReservationService {
         try {
             Reservation reservation = reservations.save(new Reservation(ship, borne));
             bornes.save(borne);
+            mqtt.enqueue("RESERVATION_CREATED", borneId, java.util.Map.of("reservationId", reservation.getId(),
+                    "shipId", shipId), reservation.getId());
+            publishStatus(reservation, "RESERVED");
             return reservation;
         } catch (DataIntegrityViolationException exception) {
             throw new IllegalStateException("Borne is already reserved", exception);
@@ -45,26 +50,39 @@ public class ReservationService {
     @Transactional(readOnly = true) public Reservation find(UUID id) {
         return reservations.findById(id).orElseThrow(() -> new ReservationNotFoundException(id));
     }
-    @Transactional public Reservation start(UUID id) { return update(id, Reservation::start); }
-    @Transactional public Reservation cancel(UUID id) { return update(id, Reservation::cancel); }
+    @Transactional public Reservation start(UUID id) { return update(id, Reservation::start, "IN_USE"); }
+    @Transactional public Reservation cancel(UUID id) { return update(id, Reservation::cancel, "AVAILABLE"); }
     @Transactional public Reservation consume(UUID id, BigDecimal electricity, BigDecimal water) {
         Reservation reservation = locked(id);
         reservation.consume(electricity, water);
         bornes.save(reservation.getBorne());
-        return reservations.save(reservation);
+        Reservation saved = reservations.save(reservation);
+        mqtt.enqueue("CONSUMPTION_RECORDED", saved.getBorne().getId(), java.util.Map.of("reservationId", saved.getId(),
+                "shipId", saved.getShip().getId(), "electricityKwh", electricity, "waterLiters", water), saved.getId());
+        return saved;
     }
     @Transactional public Reservation complete(UUID id) {
         Reservation reservation = locked(id);
         reservation.complete(pricing.electricityCost(reservation.getElectricityKwh()),
                 pricing.waterCost(reservation.getWaterLiters()));
         bornes.save(reservation.getBorne());
-        return reservations.save(reservation);
+        Reservation saved = reservations.save(reservation);
+        mqtt.enqueue("RESERVATION_COMPLETED", saved.getBorne().getId(), java.util.Map.of("reservationId", saved.getId(),
+                "shipId", saved.getShip().getId(), "totalCost", saved.getTotalCost()), saved.getId());
+        publishStatus(saved, "AVAILABLE");
+        return saved;
     }
-    private Reservation update(UUID id, java.util.function.Consumer<Reservation> action) {
+    private Reservation update(UUID id, java.util.function.Consumer<Reservation> action, String status) {
         Reservation reservation = locked(id);
         action.accept(reservation);
         bornes.save(reservation.getBorne());
-        return reservations.save(reservation);
+        Reservation saved = reservations.save(reservation);
+        publishStatus(saved, status);
+        return saved;
+    }
+    private void publishStatus(Reservation reservation, String status) {
+        mqtt.enqueue("BORNE_STATUS_CHANGED", reservation.getBorne().getId(),
+                java.util.Map.of("status", status, "reservationId", reservation.getId()), reservation.getId());
     }
     private Reservation locked(UUID id) {
         return reservations.findByIdForUpdate(id).orElseThrow(() -> new ReservationNotFoundException(id));

@@ -263,3 +263,80 @@ Unit and application tests run in Maven. Docker image, three-container,
 shared-database persistence, gateway, and recovery tests require a running
 Docker daemon and are an environment-level verification step; the repository
 does not claim those tests passed unless the commands are executed.
+
+## Hybrid MQTT and WebSocket communication
+
+REST remains the synchronous API for ships, reservations, Borne lifecycle
+operations, and administration. Borne transactions also write a versioned
+event to `mqtt_outbox` in the same PostgreSQL transaction. A scheduled Paho
+publisher retries pending records and publishes them to authenticated
+Mosquitto. Management subscribes to
+`soa/v1/ports/{portId}/bornes/{borneId}/{consumption|status|alerts|availability}`
+with QoS 1, stores event IDs in `processed_mqtt_event`, and ignores duplicates.
+Consumption events are never retained; availability uses a retained ONLINE
+message and a Last Will OFFLINE message.
+
+```mermaid
+sequenceDiagram
+  participant B as Borne B001
+  participant M as Mosquitto
+  participant G as Management
+  participant P as PostgreSQL
+  participant A as Angular
+  B->>P: business row + outbox row (one transaction)
+  B->>M: QoS 1 event
+  M->>G: subscribed event
+  G->>P: deduplicate and update monitoring
+  G-->>A: STOMP /topic/bornes/telemetry
+```
+
+Management exposes STOMP over WebSocket at `/ws` (the Gateway forwards the
+upgrade). Dashboard subscriptions are `/topic/bornes/status`,
+`/topic/bornes/telemetry`, `/topic/bornes/{borneId}/telemetry`,
+`/topic/bornes/{borneId}/health`, and `/topic/alerts`; user queues are
+available at `/user/queue/notifications`. The Angular client reconnects with
+bounded delay and reloads authoritative REST state after reconnect. The
+current simple broker is appropriate for one Management replica; a scaled
+deployment must use an external STOMP broker and stricter authenticated
+subscription authorization. The dashboard reads optional runtime
+`window.SOA_WS_CONFIG` credentials for WebSocket (`username`, `password`) and
+Gateway REST (`apiUsername`, `apiPassword`) access. Docker injects these
+through `DASHBOARD_WS_*` and `DASHBOARD_API_*` variables; never commit real
+credentials. The dashboard reloads REST state after reconnect, shows API
+errors, and safely ignores malformed realtime messages. Management rejects
+unauthenticated STOMP CONNECT and client SEND frames.
+
+Start the complete local stack:
+
+```bash
+cp .env.example .env
+./mvnw clean package
+docker build -t soa-borne:local borne
+docker compose up -d postgres mosquitto migration management gateway dashboard
+```
+
+Mosquitto has no host port exposed. Compose generates its password file from
+`MQTT_USER`, `MQTT_PASSWORD`, and `MQTT_BORNE_PASSWORD`; Borne users are
+restricted by ACL to their own topic subtree. For an untrusted network, place
+Mosquitto behind TLS rather than exposing port 1883.
+
+An event has the following envelope (database entities are never serialized):
+
+```json
+{
+  "eventId": "uuid",
+  "eventType": "CONSUMPTION_RECORDED",
+  "schemaVersion": 1,
+  "portId": "PORT001",
+  "borneId": "B001",
+  "occurredAt": "2026-11-11T19:45:00Z",
+  "correlationId": "reservation-uuid",
+  "payload": {"electricityKwh": 15.5, "waterLiters": 350}
+}
+```
+
+Useful checks are `docker compose ps`, `docker compose logs mosquitto`,
+`curl -u admin:change-me http://localhost:8080/api/management/bornes`, and
+the Angular dashboard at `http://localhost:4200`. Stop with
+`docker compose down`; add `-v` only when intentionally deleting PostgreSQL
+and Mosquitto persistence.

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/realtime.spec.ts"],
+  "sourcesContent": ["import { describe, expect, it } from 'vitest';\n\ndescribe('dashboard realtime contract', () => {\n  it('uses the shared status, telemetry, and alert destinations', () => {\n    const destinations = [\n      '/topic/bornes/status',\n      '/topic/bornes/telemetry',\n      '/topic/alerts'\n    ];\n\n    expect(destinations).toContain('/topic/bornes/status');\n    expect(destinations).toContain('/topic/bornes/telemetry');\n    expect(destinations).toContain('/topic/alerts');\n  });\n});\n"],
+  "mappings": ";AAAA,SAAS,UAAU,QAAQ,UAAU;AAErC,SAAS,+BAA+B,MAAK;AAC3C,KAAG,6DAA6D,MAAK;AACnE,UAAM,eAAe;MACnB;MACA;MACA;;AAGF,WAAO,YAAY,EAAE,UAAU,sBAAsB;AACrD,WAAO,YAAY,EAAE,UAAU,yBAAyB;AACxD,WAAO,YAAY,EAAE,UAAU,eAAe;EAChD,CAAC;AACH,CAAC;",
+  "names": []
+}

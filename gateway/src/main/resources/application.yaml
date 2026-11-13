@@ -11,6 +11,14 @@ spring:
           uri: http://${MANAGEMENT_HOST:management}:${MANAGEMENT_PORT:8081}
           predicates:
             - Path=/api/management/**
+        - id: management-websocket
+          uri: ws://${MANAGEMENT_HOST:management}:${MANAGEMENT_PORT:8081}
+          predicates:
+            - Path=/ws,/ws/**
+        - id: dashboard
+          uri: http://${DASHBOARD_HOST:dashboard}:${DASHBOARD_PORT:80}
+          predicates:
+            - Path=/,/index.html,/main.js,/config.js,/favicon.ico,/assets/**
 server.port: ${SERVER_PORT:8080}
 gateway:
   username: ${GATEWAY_USERNAME:admin}
